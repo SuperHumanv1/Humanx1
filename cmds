@@ -1,0 +1,682 @@
+-- 🔥 Firefly Commands UI - Fixed Version
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local player = Players.LocalPlayer
+
+-- ลบ UI เก่าออกก่อน
+if player.PlayerGui:FindFirstChild("FireflyCommandsUI") then
+    player.PlayerGui:FindFirstChild("FireflyCommandsUI"):Destroy()
+end
+
+-- ตัวแปรควบคุม
+local isFollowing = false
+local followTarget = nil
+local stopAllActions = false
+local isFirefliesVisible = true
+local followConnection = nil
+local spawnPoint = nil
+local isAutoRespawnEnabled = false
+
+-- ========== สร้าง UI หลักใหม่ ==========
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FireflyCommandsUI"
+screenGui.Parent = player:WaitForChild("PlayerGui")
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- ========== SECRET UI (เปิดด้วย !cmdfirefly) ==========
+local secretFrame = Instance.new("Frame")
+secretFrame.Size = UDim2.new(0, 340, 0, 420)
+secretFrame.Position = UDim2.new(0.5, -170, 0.5, -210)
+secretFrame.BackgroundColor3 = Color3.fromRGB(15, 20, 30)
+secretFrame.BorderSizePixel = 0
+secretFrame.Visible = false
+secretFrame.Parent = screenGui
+
+local secretCorner = Instance.new("UICorner")
+secretCorner.CornerRadius = UDim.new(0, 8)
+secretCorner.Parent = secretFrame
+
+-- หัวข้อ
+local secretHeader = Instance.new("Frame")
+secretHeader.Size = UDim2.new(1, 0, 0, 50)
+secretHeader.BackgroundColor3 = Color3.fromRGB(25, 35, 50)
+secretHeader.BorderSizePixel = 0
+secretHeader.Active = true
+secretHeader.Parent = secretFrame
+
+local secretHeaderCorner = Instance.new("UICorner")
+secretHeaderCorner.CornerRadius = UDim.new(0, 8)
+secretHeaderCorner.Parent = secretHeader
+
+local secretTitle = Instance.new("TextLabel")
+secretTitle.Text = "⚡ FIREFLY COMMANDS FIXED"
+secretTitle.Size = UDim2.new(1, -70, 1, 0)
+secretTitle.Position = UDim2.new(0, 10, 0, 0)
+secretTitle.BackgroundTransparency = 1
+secretTitle.TextColor3 = Color3.fromRGB(255, 200, 100)
+secretTitle.TextSize = 16
+secretTitle.Font = Enum.Font.GothamBold
+secretTitle.Parent = secretHeader
+
+local secretCloseBtn = Instance.new("TextButton")
+secretCloseBtn.Text = "×"
+secretCloseBtn.Size = UDim2.new(0, 30, 0, 30)
+secretCloseBtn.Position = UDim2.new(1, -35, 0.5, -15)
+secretCloseBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+secretCloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+secretCloseBtn.TextSize = 18
+secretCloseBtn.Font = Enum.Font.GothamBold
+secretCloseBtn.Parent = secretHeader
+
+local secretBtnCorner = Instance.new("UICorner")
+secretBtnCorner.CornerRadius = UDim.new(0, 6)
+secretBtnCorner.Parent = secretCloseBtn
+
+-- Content
+local secretContent = Instance.new("ScrollingFrame")
+secretContent.Size = UDim2.new(1, -20, 0, 320)
+secretContent.Position = UDim2.new(0, 10, 0, 60)
+secretContent.BackgroundTransparency = 1
+secretContent.BorderSizePixel = 0
+secretContent.ScrollBarThickness = 4
+secretContent.ScrollBarImageColor3 = Color3.fromRGB(80, 90, 110)
+secretContent.AutomaticCanvasSize = Enum.AutomaticSize.Y
+secretContent.Parent = secretFrame
+
+local secretLayout = Instance.new("UIListLayout")
+secretLayout.Padding = UDim.new(0, 8)
+secretLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+secretLayout.Parent = secretContent
+
+-- Status
+local secretStatus = Instance.new("Frame")
+secretStatus.Size = UDim2.new(1, -20, 0, 35)
+secretStatus.Position = UDim2.new(0, 10, 1, -40)
+secretStatus.BackgroundColor3 = Color3.fromRGB(25, 35, 50)
+secretStatus.Parent = secretFrame
+
+local secretStatusCorner = Instance.new("UICorner")
+secretStatusCorner.CornerRadius = UDim.new(0, 6)
+secretStatusCorner.Parent = secretStatus
+
+local secretStatusText = Instance.new("TextLabel")
+secretStatusText.Text = "⚡ พิมพ์ !cmdfirefly เพื่อเปิด/ปิด UI นี้"
+secretStatusText.Size = UDim2.new(1, -10, 1, 0)
+secretStatusText.Position = UDim2.new(0, 5, 0, 0)
+secretStatusText.BackgroundTransparency = 1
+secretStatusText.TextColor3 = Color3.fromRGB(255, 200, 100)
+secretStatusText.TextSize = 11
+secretStatusText.Font = Enum.Font.Gotham
+secretStatusText.TextXAlignment = Enum.TextXAlignment.Left
+secretStatusText.Parent = secretStatus
+
+-- ========== คำสั่งทั้งหมด ==========
+local secretCommands = {
+    {name = "!tp [ชื่อ]", desc = "ติดตามผู้เล่นอัตโนมัติ (FIXED)", example = "!tp Player1", color = Color3.fromRGB(100, 150, 255)},
+    {name = "!tps", desc = "หยุดการติดตาม", example = "!tps", color = Color3.fromRGB(255, 100, 100)},
+    {name = "!copy [ชื่อ]", desc = "ก๊อปปี้ชุดผู้เล่น (FIXED)", example = "!copy P1", color = Color3.fromRGB(50, 200, 150)},
+    {name = "!firefly [จำนวน]", desc = "เสก Firefly ตามจำนวน (FIXED)", example = "!firefly 1000", color = Color3.fromRGB(0, 150, 80)},
+    {name = "!goto [ชื่อ]", desc = "วาร์ปไปหาผู้เล่น", example = "!goto Player1", color = Color3.fromRGB(70, 130, 200)},
+    {name = "!ns", desc = "ปิดการมองเห็น Firefly (FIXED)", example = "!ns", color = Color3.fromRGB(200, 50, 50)},
+    {name = "!s", desc = "เปิดการมองเห็น Firefly (FIXED)", example = "!s", color = Color3.fromRGB(50, 200, 50)},
+    {name = "!fireflyclear", desc = "ล้าง Firefly ทั้งหมด", example = "!fireflyclear", color = Color3.fromRGB(200, 60, 60)},
+    {name = "!sa", desc = "หยุดการทำงานทั้งหมด", example = "!sa", color = Color3.fromRGB(255, 150, 50)}
+}
+
+-- ========== ฟังก์ชันสร้างการ์ด ==========
+local function createCard(cmd)
+    local card = Instance.new("Frame")
+    card.Size = UDim2.new(0.95, 0, 0, 70)
+    card.BackgroundColor3 = Color3.fromRGB(30, 40, 50)
+    card.BorderSizePixel = 0
+    
+    local cardCorner = Instance.new("UICorner")
+    cardCorner.CornerRadius = UDim.new(0, 6)
+    cardCorner.Parent = card
+    
+    local colorBar = Instance.new("Frame")
+    colorBar.Size = UDim2.new(1, 0, 0, 3)
+    colorBar.BackgroundColor3 = cmd.color or Color3.fromRGB(100, 100, 100)
+    colorBar.BorderSizePixel = 0
+    colorBar.Parent = card
+    
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Text = cmd.name
+    nameLabel.Size = UDim2.new(1, -10, 0, 25)
+    nameLabel.Position = UDim2.new(0, 5, 0, 5)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLabel.TextSize = 13
+    nameLabel.Font = Enum.Font.GothamSemibold
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nameLabel.Parent = card
+    
+    local descLabel = Instance.new("TextLabel")
+    descLabel.Text = cmd.desc
+    descLabel.Size = UDim2.new(1, -10, 0, 20)
+    descLabel.Position = UDim2.new(0, 5, 0, 30)
+    descLabel.BackgroundTransparency = 1
+    descLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    descLabel.TextSize = 11
+    descLabel.Font = Enum.Font.Gotham
+    descLabel.TextXAlignment = Enum.TextXAlignment.Left
+    descLabel.Parent = card
+    
+    local exampleLabel = Instance.new("TextLabel")
+    exampleLabel.Text = "📝 " .. cmd.example
+    exampleLabel.Size = UDim2.new(1, -10, 0, 18)
+    exampleLabel.Position = UDim2.new(0, 5, 0, 50)
+    exampleLabel.BackgroundTransparency = 1
+    exampleLabel.TextColor3 = Color3.fromRGB(150, 200, 255)
+    exampleLabel.TextSize = 10
+    exampleLabel.Font = Enum.Font.Gotham
+    exampleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    exampleLabel.Parent = card
+    
+    return card
+end
+
+-- โหลดคำสั่งลง UI
+local function loadSecretCommands()
+    secretContent:ClearAllChildren()
+    for i, cmd in ipairs(secretCommands) do
+        local card = createCard(cmd)
+        card.Parent = secretContent
+    end
+end
+
+-- ========== อัพเดทสถานะ ==========
+local function updateStatus(message)
+    secretStatusText.Text = message
+    
+    if message:find("❌") or message:find("ไม่") or message:find("ล้มเหลว") then
+        secretStatusText.TextColor3 = Color3.fromRGB(255, 100, 100)
+    elseif message:find("✅") or message:find("สำเร็จ") then
+        secretStatusText.TextColor3 = Color3.fromRGB(100, 255, 100)
+    elseif message:find("⚡") or message:find("📍") or message:find("กำลัง") then
+        secretStatusText.TextColor3 = Color3.fromRGB(255, 200, 100)
+    else
+        secretStatusText.TextColor3 = Color3.fromRGB(255, 220, 150)
+    end
+end
+
+-- ========== ฟังก์ชันพื้นฐาน ==========
+local function findPlayer(name)
+    if not name or name == "" then return nil end
+    
+    for _, p in ipairs(Players:GetPlayers()) do
+        if string.lower(p.Name) == string.lower(name) or 
+           string.find(string.lower(p.Name), string.lower(name)) then
+            return p
+        end
+    end
+    return nil
+end
+
+-- ========== FIXED !tp COMMAND ==========
+local function startFollowing(target)
+    if not target or not target.Character then
+        updateStatus("❌ ผู้เล่นไม่มี Character")
+        return false
+    end
+    
+    -- หยุดการติดตามเก่าก่อน
+    if followConnection then
+        followConnection:Disconnect()
+        followConnection = nil
+    end
+    
+    isFollowing = true
+    followTarget = target
+    
+    updateStatus("📍 กำลังติดตาม " .. target.Name)
+    
+    -- วาร์ปไปหาผู้เล่นทันที
+    local myChar = player.Character
+    if myChar and myChar:FindFirstChild("HumanoidRootPart") then
+        local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
+        if targetHRP then
+            myChar.HumanoidRootPart.CFrame = targetHRP.CFrame + Vector3.new(0, 3, 0)
+        end
+    end
+    
+    -- เริ่มระบบติดตาม
+    followConnection = RunService.Heartbeat:Connect(function()
+        if not isFollowing or not followTarget then
+            if followConnection then
+                followConnection:Disconnect()
+                followConnection = nil
+            end
+            return
+        end
+        
+        if stopAllActions then
+            isFollowing = false
+            if followConnection then
+                followConnection:Disconnect()
+                followConnection = nil
+            end
+            updateStatus("⏹️ หยุดติดตาม")
+            return
+        end
+        
+        local myChar = player.Character
+        if not myChar or not myChar:FindFirstChild("HumanoidRootPart") then
+            return
+        end
+        
+        if followTarget.Character and followTarget.Character:FindFirstChild("HumanoidRootPart") then
+            local targetHRP = followTarget.Character.HumanoidRootPart
+            local myHRP = myChar.HumanoidRootPart
+            
+            -- ใช้ CFrame.lookAt เพื่อหันหน้าไปทางผู้เล่นที่ติดตาม
+            local newCFrame = CFrame.lookAt(
+                targetHRP.Position + Vector3.new(0, 3, 0),
+                targetHRP.Position
+            )
+            
+            -- Smooth teleport
+            myHRP.CFrame = newCFrame
+        end
+    end)
+    
+    return true
+end
+
+local function stopFollowing()
+    isFollowing = false
+    followTarget = nil
+    
+    if followConnection then
+        followConnection:Disconnect()
+        followConnection = nil
+    end
+    
+    updateStatus("⏹️ หยุดติดตาม")
+end
+
+-- ========== FIXED !copy COMMAND ==========
+local function copyOutfit(target)
+    if not target or not target.Character then
+        updateStatus("❌ ไม่พบผู้เล่น")
+        return false
+    end
+    
+    local myChar = player.Character
+    if not myChar then
+        updateStatus("❌ คุณไม่มี Character")
+        return false
+    end
+    
+    -- รอให้ Character โหลดเสร็จ
+    if not myChar:FindFirstChild("Humanoid") then
+        updateStatus("❌ กำลังรอ Character...")
+        return false
+    end
+    
+    -- ลบชุดเก่าออก
+    for _, item in ipairs(myChar:GetChildren()) do
+        if item:IsA("Accessory") then
+            item:Destroy()
+        end
+    end
+    
+    -- ลบเสื้อผ้าเก่า
+    for _, item in ipairs(myChar:GetChildren()) do
+        if item:IsA("Shirt") or item:IsA("Pants") then
+            item:Destroy()
+        end
+    end
+    
+    -- ก๊อปปี้ชุดใหม่
+    local copied = 0
+    
+    -- ก๊อปปี้ Accessories
+    for _, item in ipairs(target.Character:GetChildren()) do
+        if item:IsA("Accessory") then
+            local clone = item:Clone()
+            clone.Parent = myChar
+            copied = copied + 1
+        end
+    end
+    
+    -- ก๊อปปี้เสื้อผ้า
+    for _, item in ipairs(target.Character:GetChildren()) do
+        if item:IsA("Shirt") then
+            local clone = item:Clone()
+            clone.Parent = myChar
+            copied = copied + 1
+        elseif item:IsA("Pants") then
+            local clone = item:Clone()
+            clone.Parent = myChar
+            copied = copied + 1
+        end
+    end
+    
+    -- ก๊อปปี้ Body Colors
+    local targetHumanoid = target.Character:FindFirstChild("Humanoid")
+    local myHumanoid = myChar:FindFirstChild("Humanoid")
+    
+    if targetHumanoid and myHumanoid then
+        myHumanoid.BodyTypeScale.Value = targetHumanoid.BodyTypeScale.Value
+        myHumanoid.DepthScale.Value = targetHumanoid.DepthScale.Value
+        myHumanoid.HeadScale.Value = targetHumanoid.HeadScale.Value
+        myHumanoid.HeightScale.Value = targetHumanoid.HeightScale.Value
+        myHumanoid.ProportionScale.Value = targetHumanoid.ProportionScale.Value
+        myHumanoid.WidthScale.Value = targetHumanoid.WidthScale.Value
+    end
+    
+    updateStatus("👕 ก๊อปปี้ชุด " .. copied .. " ชิ้นสำเร็จ")
+    return true
+end
+
+-- ========== FIXED !firefly COMMAND ==========
+local function spawnFireflies(count)
+    if stopAllActions then 
+        updateStatus("❌ หยุดการทำงานทั้งหมด")
+        return false 
+    end
+    
+    -- หา Firefly tool
+    local fireflies = player.Backpack:FindFirstChild("Fireflies") or 
+                     player.Character:FindFirstChild("Fireflies")
+    
+    if not fireflies then
+        updateStatus("❌ ไม่พบ Fireflies Tool")
+        return false
+    end
+    
+    local remote = fireflies:FindFirstChild("RemoteEvent")
+    if not remote then
+        remote = fireflies:FindFirstChild("RemoteFunction")
+    end
+    
+    if not remote then
+        updateStatus("❌ ไม่พบ RemoteEvent/RemoteFunction")
+        return false
+    end
+    
+    updateStatus("⚡ กำลังเสก " .. count .. " ตัว...")
+    
+    -- เริ่มการเสก
+    spawn(function()
+        local successCount = 0
+        local batchSize = 100  -- ส่งทีละ 100 ตัว
+        
+        for i = 1, count do
+            if stopAllActions then break end
+            
+            -- ส่งคำสั่ง
+            pcall(function()
+                if remote:IsA("RemoteEvent") then
+                    remote:FireServer()
+                elseif remote:IsA("RemoteFunction") then
+                    remote:InvokeServer()
+                end
+                successCount = successCount + 1
+            end)
+            
+            -- รอเล็กน้อยทุก 100 ตัว
+            if i % batchSize == 0 then
+                updateStatus("⚡ กำลังเสก... (" .. i .. "/" .. count .. ")")
+                wait(0.05)
+            end
+        end
+        
+        if stopAllActions then
+            updateStatus("⏹️ หยุดที่ " .. successCount .. " ตัว")
+        else
+            updateStatus("✅ เสกสำเร็จ " .. successCount .. " ตัว!")
+        end
+    end)
+    
+    return true
+end
+
+-- ========== FIXED VISIBILITY COMMANDS ==========
+local function setFirefliesVisibility(visible)
+    local count = 0
+    
+    -- หา Firefly ทั้งหมดใน Workspace
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and (obj.Name:find("Firefly") or obj.Name:find("firefly") or obj.Name:find("FF")) then
+            if visible then
+                obj.Transparency = 0
+                if obj:FindFirstChildOfClass("ParticleEmitter") then
+                    obj:FindFirstChildOfClass("ParticleEmitter").Enabled = true
+                end
+                if obj:FindFirstChild("PointLight") then
+                    obj.PointLight.Enabled = true
+                end
+            else
+                obj.Transparency = 1
+                if obj:FindFirstChildOfClass("ParticleEmitter") then
+                    obj:FindFirstChildOfClass("ParticleEmitter").Enabled = false
+                end
+                if obj:FindFirstChild("PointLight") then
+                    obj.PointLight.Enabled = false
+                end
+            end
+            count = count + 1
+        end
+    end
+    
+    if visible then
+        updateStatus("👁️ เปิดการมองเห็น Firefly " .. count .. " ตัว")
+    else
+        updateStatus("🚫 ปิดการมองเห็น Firefly " .. count .. " ตัว")
+    end
+    
+    isFirefliesVisible = visible
+    return true
+end
+
+-- ========== ฟังก์ชันอื่นๆ ==========
+local function teleportTo(target)
+    if not target or not target.Character then
+        updateStatus("❌ ผู้เล่นไม่มี Character")
+        return false
+    end
+    
+    local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
+    if not targetHRP then
+        updateStatus("❌ ไม่พบ HumanoidRootPart ของผู้เล่น")
+        return false
+    end
+    
+    local myChar = player.Character
+    if not myChar then
+        updateStatus("❌ คุณไม่มี Character")
+        return false
+    end
+    
+    local myHRP = myChar:FindFirstChild("HumanoidRootPart")
+    if not myHRP then
+        updateStatus("❌ ไม่พบ HumanoidRootPart ของคุณ")
+        return false
+    end
+    
+    myHRP.CFrame = targetHRP.CFrame + Vector3.new(0, 3, 0)
+    updateStatus("📍 วาร์ปไปหา " .. target.Name)
+    return true
+end
+
+local function clearFireflies()
+    local count = 0
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj.Name:find("Firefly") or obj.Name:find("firefly") or obj.Name:find("FF") then
+            obj:Destroy()
+            count = count + 1
+        end
+    end
+    updateStatus("🧹 ล้าง Firefly " .. count .. " ตัว")
+end
+
+local function stopAll()
+    stopAllActions = true
+    stopFollowing()
+    updateStatus("⏹️ หยุดการทำงานทั้งหมด")
+    
+    wait(2)
+    stopAllActions = false
+    updateStatus("✅ พร้อมใช้งาน")
+end
+
+-- ========== Dragging System ==========
+local secretDragging = false
+local secretDragStart = Vector2.new(0, 0)
+local secretStartPos = UDim2.new(0, 0, 0, 0)
+
+secretHeader.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        secretDragging = true
+        secretDragStart = Vector2.new(input.Position.X, input.Position.Y)
+        secretStartPos = secretFrame.Position
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if secretDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = Vector2.new(input.Position.X, input.Position.Y) - secretDragStart
+        secretFrame.Position = UDim2.new(
+            secretStartPos.X.Scale, secretStartPos.X.Offset + delta.X,
+            secretStartPos.Y.Scale, secretStartPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        secretDragging = false
+    end
+end)
+
+-- ปุ่มปิด
+secretCloseBtn.MouseButton1Click:Connect(function()
+    secretFrame.Visible = false
+end)
+
+secretCloseBtn.MouseEnter:Connect(function()
+    secretCloseBtn.BackgroundColor3 = Color3.fromRGB(220, 70, 70)
+end)
+
+secretCloseBtn.MouseLeave:Connect(function()
+    secretCloseBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+end)
+
+-- ========== ระบบคำสั่งแชท ==========
+local function processChatCommand(message)
+    local msg = string.lower(message)
+    
+    if string.sub(msg, 1, 1) ~= "!" then
+        return
+    end
+    
+    -- แยกคำสั่ง
+    local parts = {}
+    for part in string.gmatch(msg, "[^%s]+") do
+        table.insert(parts, part)
+    end
+    
+    if #parts == 0 then return end
+    
+    local command = string.sub(parts[1], 2)
+    local param = parts[2] or ""
+    
+    -- เปิด/ปิด UI
+    if command == "cmdfirefly" then
+        secretFrame.Visible = not secretFrame.Visible
+        if secretFrame.Visible then
+            loadSecretCommands()
+            updateStatus("⚡ Firefly Commands UI เปิดแล้ว")
+        else
+            updateStatus("🔐 พิมพ์ !cmdfirefly เพื่อเปิด")
+        end
+        return
+    end
+    
+    -- คำสั่งที่แก้ไขแล้ว
+    if command == "tp" then
+        local target = findPlayer(param)
+        if target then
+            startFollowing(target)
+        else
+            updateStatus("❌ ไม่พบผู้เล่น: " .. param)
+        end
+        
+    elseif command == "tps" then
+        stopFollowing()
+        
+    elseif command == "copy" then
+        local target = findPlayer(param)
+        if target then
+            copyOutfit(target)
+        else
+            updateStatus("❌ ไม่พบผู้เล่น: " .. param)
+        end
+        
+    elseif command == "firefly" then
+        local count = tonumber(param) or 100
+        spawnFireflies(count)
+        
+    elseif command == "goto" then
+        local target = findPlayer(param)
+        if target then
+            teleportTo(target)
+        else
+            updateStatus("❌ ไม่พบผู้เล่น: " .. param)
+        end
+        
+    elseif command == "ns" then
+        setFirefliesVisibility(false)
+        
+    elseif command == "s" then
+        setFirefliesVisibility(true)
+        
+    elseif command == "fireflyclear" then
+        clearFireflies()
+        
+    elseif command == "sa" then
+        stopAll()
+        
+    else
+        updateStatus("❌ คำสั่งไม่รู้จัก: !" .. command)
+    end
+end
+
+-- รับฟังคำสั่งแชท
+player.Chatted:Connect(function(message)
+    processChatCommand(message)
+end)
+
+-- ========== เริ่มต้นระบบ ==========
+loadSecretCommands()
+
+-- แสดงข้อความเริ่มต้น
+print("==================================================")
+print("🔥 Firefly Commands UI - FIXED VERSION")
+print("")
+print("✅ ปัญหาที่แก้ไขแล้ว:")
+print("  1. !tp - ติดตามผู้เล่นได้แล้ว")
+print("  2. !copy - ก๊อปปี้ชุดผู้เล่นได้แล้ว")
+print("  3. !firefly - เสก Firefly ได้แล้ว")
+print("  4. !ns/!s - ปิด/เปิดการมองเห็นได้แล้ว")
+print("  5. ลบ UI เก่าออกทั้งหมดและสร้างใหม่")
+print("")
+print("⚡ คำสั่งที่ใช้งานได้:")
+print("  !tp [ชื่อ]      - ติดตามผู้เล่น (FIXED)")
+print("  !tps           - หยุดติดตาม")
+print("  !copy [ชื่อ]    - ก๊อปปี้ชุด (FIXED)")
+print("  !firefly [จำนวน] - เสก Firefly (FIXED)")
+print("  !goto [ชื่อ]    - วาร์ปไปหา")
+print("  !ns           - ปิดมองเห็น Firefly (FIXED)")
+print("  !s            - เปิดมองเห็น Firefly (FIXED)")
+print("  !fireflyclear  - ล้าง Firefly")
+print("  !sa           - หยุดทั้งหมด")
+print("")
+print("📌 ใช้คำสั่ง: !cmdfirefly เพื่อเปิด/ปิด UI")
+print("==================================================")
+
+updateStatus("✅ พร้อมใช้งาน - พิมพ์ !cmdfirefly เพื่อเปิด UI")
