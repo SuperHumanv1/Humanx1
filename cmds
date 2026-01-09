@@ -1,3 +1,217 @@
+-- สร้าง Loading Animation GUI
+local loadingGui = Instance.new("ScreenGui")
+loadingGui.Name = "LoadingAnimation"
+loadingGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+loadingGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- พื้นหลังดำโปร่งใส
+local background = Instance.new("Frame")
+background.Size = UDim2.new(1, 0, 1, 0)
+background.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+background.BackgroundTransparency = 0.7
+background.BorderSizePixel = 0
+background.Parent = loadingGui
+
+-- Container สำหรับอนิเมชัน
+local container = Instance.new("Frame")
+container.Size = UDim2.new(0, 200, 0, 200)
+container.Position = UDim2.new(0.5, -100, 0.5, -100)
+container.BackgroundTransparency = 1
+container.Parent = loadingGui
+
+-- วงกลม Loading ขนาดใหญ่
+local circle = Instance.new("Frame")
+circle.Size = UDim2.new(0, 80, 0, 80)
+circle.Position = UDim2.new(0.5, -40, 0.5, -40)
+circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+circle.BackgroundTransparency = 0.1
+circle.Parent = container
+
+local circleCorner = Instance.new("UICorner")
+circleCorner.CornerRadius = UDim.new(1, 0)
+circleCorner.Parent = circle
+
+-- วงกลมหมุน (วงใน)
+local spinner = Instance.new("Frame")
+spinner.Size = UDim2.new(0, 60, 0, 60)
+spinner.Position = UDim2.new(0.5, -30, 0.5, -30)
+spinner.BackgroundColor3 = Color3.fromRGB(255, 200, 50)
+spinner.BackgroundTransparency = 0
+spinner.Parent = container
+
+local spinnerCorner = Instance.new("UICorner")
+spinnerCorner.CornerRadius = UDim.new(1, 0)
+spinnerCorner.Parent = spinner
+
+-- ข้อความ Loading
+local loadingText = Instance.new("TextLabel")
+loadingText.Size = UDim2.new(1, 0, 0, 30)
+loadingText.Position = UDim2.new(0, 0, 0.9, 0)
+loadingText.BackgroundTransparency = 1
+loadingText.TextColor3 = Color3.fromRGB(255, 255, 255)
+loadingText.TextSize = 14
+loadingText.Font = Enum.Font.GothamBold
+loadingText.Text = "Loading..."
+loadingText.Parent = container
+
+-- ข้อความชื่อสคริปต์ที่หมุน
+local rotatingText = Instance.new("TextLabel")
+rotatingText.Size = UDim2.new(0, 120, 0, 30)
+rotatingText.BackgroundTransparency = 1
+rotatingText.TextColor3 = Color3.fromRGB(255, 200, 50)
+rotatingText.TextSize = 12
+rotatingText.Font = Enum.Font.GothamBold
+rotatingText.Text = "Cmds by humanx1"
+rotatingText.Parent = container
+
+-- เริ่มต้น Animation
+local runService = game:GetService("RunService")
+local connection = nil
+
+-- ฟังก์ชันปิด Loading Screen
+local function closeLoadingScreen()
+    if connection then
+        connection:Disconnect()
+    end
+    
+    -- Animation หายไปอย่างช้าๆ
+    for i = 1, 10 do
+        container.BackgroundTransparency = i/10
+        background.BackgroundTransparency = 0.7 + (i/10 * 0.3)
+        container.Position = UDim2.new(0.5, -100, 0.5, -100 - (i * 5))
+        task.wait(0.03)
+    end
+    
+    loadingGui:Destroy()
+end
+
+-- ฟังก์ชันเริ่มต้น Animation
+local function startLoadingAnimation()
+    local time = 0
+    local radius = 70  -- รัศมีการหมุน
+    
+    connection = runService.RenderStepped:Connect(function(delta)
+        time = time + delta * 2
+        
+        -- หมุนข้อความรอบๆ วงกลม
+        local x = math.cos(time) * radius
+        local y = math.sin(time) * radius
+        rotatingText.Position = UDim2.new(0.5, x - 60, 0.5, y - 15)
+        
+        -- หมุนวงกลมใน
+        spinner.Rotation = time * 100
+    end)
+    
+    -- หลังจาก 2 วินาที เริ่มเขียนข้อความในแชท
+    task.wait(1)
+    
+    -- เปลี่ยนข้อความ Loading
+    loadingText.Text = "กำลังส่งข้อความในแชท..."
+    
+    -- พิมพ์ข้อความในแชทแบบทีละตัวอักษร
+    local message = "SCRIPT CITY THAILAND 2 BY HUMANX1"
+    
+    -- ฟังก์ชันสำหรับพิมพ์ข้อความในช่องแชท
+    local function typeInChat(text)
+        -- พยายามหาช่องแชท
+        local chatBar = nil
+        
+        -- หา ChatBar จาก StarterGui
+        for _, gui in pairs(game:GetService("StarterGui"):GetDescendants()) do
+            if gui:IsA("TextBox") and (gui.Name == "ChatBar" or gui.Parent.Name == "ChatBar") then
+                chatBar = gui
+                break
+            end
+        end
+        
+        -- หา ChatBar จาก PlayerGui
+        if not chatBar then
+            for _, gui in pairs(game.Players.LocalPlayer.PlayerGui:GetDescendants()) do
+                if gui:IsA("TextBox") and (gui.Name == "ChatBar" or gui.Parent.Name == "ChatBar") then
+                    chatBar = gui
+                    break
+                end
+            end
+        end
+        
+        if chatBar then
+            -- ทำให้ช่องแชทมองเห็นและโฟกัส
+            chatBar.Visible = true
+            chatBar:CaptureFocus()
+            
+            -- พิมพ์ทีละตัวอักษร
+            local currentText = ""
+            for i = 1, #text do
+                currentText = string.sub(text, 1, i)
+                chatBar.Text = currentText
+                
+                -- เพิ่มเอฟเฟกต์พิมพ์
+                rotatingText.Text = "Typing" .. string.rep(".", i % 4)
+                
+                task.wait(0.05)  -- ความเร็วในการพิมพ์
+            end
+            
+            -- กด Enter เพื่อส่ง
+            chatBar.Text = text
+            task.wait(0.5)
+            
+            -- พยายามส่งข้อความ
+            pcall(function()
+                -- วิธีที่ 1: ใช้ SayMessageRequest
+                local chatEvents = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
+                if chatEvents then
+                    local sayMessageRequest = chatEvents:FindFirstChild("SayMessageRequest")
+                    if sayMessageRequest then
+                        sayMessageRequest:FireServer(text, "All")
+                    end
+                end
+            end)
+            
+            pcall(function()
+                -- วิธีที่ 2: ใช้ TextChatService
+                local textChatService = game:GetService("TextChatService")
+                if textChatService then
+                    local channel = textChatService.TextChannels:FindFirstChild("RBXGeneral")
+                    if channel then
+                        channel:SendAsync(text)
+                    end
+                end
+            end)
+            
+            -- ปิดช่องแชท
+            chatBar:ReleaseFocus()
+            task.wait(0.2)
+            chatBar.Visible = false
+            
+            return true
+        end
+        
+        return false
+    end
+    
+    -- พิมพ์ในแชท
+    local chatSuccess = typeInChat(message)
+    
+    -- เปลี่ยนข้อความ Loading ตามผลลัพธ์
+    if chatSuccess then
+        loadingText.Text = "✅ ส่งข้อความสำเร็จ!"
+        rotatingText.Text = "READY!"
+        task.wait(1)
+    else
+        loadingText.Text = "⚠️ ไม่สามารถส่งข้อความในแชทได้"
+        rotatingText.Text = "BUT SCRIPT READY!"
+        task.wait(1.5)
+    end
+    
+    -- ปิด Loading Screen
+    closeLoadingScreen()
+    
+    return chatSuccess
+end
+
+-- เริ่มต้น Animation และกระบวนการ
+task.spawn(startLoadingAnimation)
+
 -- 🔥 Firefly Commands UI - Compact
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -145,7 +359,8 @@ local mainCommands = {
     {name = "!firefly fast", desc = "โหมดเร็ว", example = "!firefly fast"},
     {name = "!firefly stop", desc = "หยุดเสก", example = "!firefly stop"},
     {name = "!ns", desc = "ปิดมองเห็นหิ่งห้อย", example = "!ns"},
-    {name = "!s", desc = "เปิดมองเห็นหิ่งห้อย", example = "!s"}
+    {name = "!s", desc = "เปิดมองเห็นหิ่งห้อย", example = "!s"},
+    {name = "!fflag", desc = "FAST FLAGS ตั้งค่า", example = "!fflag"}
 }
 
 -- ========== คำสั่งลับ ==========
@@ -166,6 +381,8 @@ local function createCommandCard(cmd, color)
     
     if string.find(cmd.name, "!ns") or string.find(cmd.name, "!s") then
         card.BackgroundColor3 = Color3.fromRGB(60, 40, 80)  -- สีพิเศษสำหรับคำสั่งมองเห็น
+    elseif string.find(cmd.name, "!fflag") then
+        card.BackgroundColor3 = Color3.fromRGB(80, 40, 40)  -- สีพิเศษสำหรับ fflag
     else
         card.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
     end
@@ -227,6 +444,8 @@ local function loadMainCommands()
             r, g, b = 200, 50, 50  -- สีแดงสำหรับปิด
         elseif cmd.name == "!s" then
             r, g, b = 50, 200, 50  -- สีเขียวสำหรับเปิด
+        elseif cmd.name == "!fflag" then
+            r, g, b = 180, 100, 50  -- สีส้มสำหรับ fflag
         else
             r = math.random(50, 200)
             g = math.random(50, 200)
@@ -473,6 +692,33 @@ local function setFirefliesVisibility(visible)
     return true
 end
 
+-- ฟังก์ชันตั้งค่า Fast Flags
+local function setFastFlags()
+    statusText.Text = "⚙️ กำลังตั้งค่า Fast Flags..."
+    statusText.TextColor3 = Color3.fromRGB(200, 200, 100)
+    
+    -- ตั้งค่า NO TEXTURES
+    pcall(function()
+        settings():SetFVariable("FIntDebugTextureManagerSkipMips", 5)
+        print("[FFLAG] NO TEXTURES: FIntDebugTextureManagerSkipMips = 5")
+    end)
+    
+    -- ตั้งค่า GREY SKY
+    pcall(function()
+        settings():SetFVariable("FFlagDebugSkyGray", true)
+        print("[FFLAG] GREY SKY: FFlagDebugSkyGray = True")
+    end)
+    
+    statusText.Text = "✅ ตั้งค่า Fast Flags สำเร็จ"
+    statusText.TextColor3 = Color3.fromRGB(150, 255, 150)
+    
+    wait(1.5)
+    statusText.Text = "✅ พร้อมใช้งาน"
+    statusText.TextColor3 = Color3.fromRGB(150, 255, 150)
+    
+    return true
+end
+
 -- ฟังก์ชันหยุดทั้งหมด
 local function stopAll()
     stopAllActions = true
@@ -660,6 +906,10 @@ local function processChatCommand(message)
     elseif command == "s" then
         setFirefliesVisibility(true)
         
+    -- คำสั่ง Fast Flags
+    elseif command == "fflag" then
+        setFastFlags()
+        
     -- คำสั่งลับ
     elseif command == "kick" then
         local target = findPlayer(param)
@@ -733,7 +983,7 @@ loadMainCommands()  -- โหลดคำสั่งหลักแรกเร
 -- ซ่อน UI เริ่มต้น (ต้องใช้ !cmdfirefly เปิด)
 mainFrame.Visible = false
 
--- แสดงข้อความเริ่มต้น
+-- แสดงข้อความเริ่มต้นใน Output
 print("========================================")
 print("🔥 Firefly Commands UI พร้อมใช้งาน!")
 print("📝 พิมพ์ !cmdfirefly ในแชทเพื่อเปิด/ปิด UI")
@@ -748,6 +998,7 @@ print("  !firefly fast        - โหมดเร็ว")
 print("  !firefly stop        - หยุดเสก")
 print("  !ns                  - ปิดมองเห็นหิ่งห้อย")
 print("  !s                   - เปิดมองเห็นหิ่งห้อย")
+print("  !fflag               - FAST FLAGS (NO TEXTURES, GREY SKY)")
 print("")
 print("⚡ คำสั่งลับ (พิมพ์ !cmdlu ในแชท):")
 print("  !kick [ชื่อ]         - เสก 1M ตัว")
